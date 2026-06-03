@@ -17,9 +17,6 @@ app.post('/api/generate-video', upload.array('images', 2), async (req, res) => {
         if (!apiKey) return res.status(400).json({ success: false, error: "API Key kosong!" });
         if (!files || files.length === 0) return res.status(400).json({ success: false, error: "Minimal upload 1 gambar (Gambar Awal)!" });
 
-        // Cek apakah user upload 1 atau 2 gambar
-        const hasEndImage = files.length === 2;
-
         console.log(`Menerima request video model: ${model}`);
         console.log(`Durasi: ${duration} detik | Jumlah Foto: ${files.length}`);
 
@@ -48,10 +45,10 @@ app.post('/api/check-status', async (req, res) => {
             res.json({ status: "PROCESSING" });
         } else {
             // 40% peluang selesai. 
-            // LINK VIDEO SUDAH DIPERBAIKI MENGGUNAKAN HTTPS (Aman)
+            // LINK VIDEO SUDAH DIGANTI KE SERVER PUBLIK YANG AMAN
             res.json({ 
                 status: "COMPLETE", 
-                video_url: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" 
+                video_url: "https://www.w3schools.com/html/mov_bbb.mp4" 
             });
         }
 
