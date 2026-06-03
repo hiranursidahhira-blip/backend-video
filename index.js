@@ -9,10 +9,9 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
-// FUNGSI KHUSUS: Pembersih Karakter Gaib / Spasi Tersembunyi
+// FUNGSI KHUSUS: Pembersih Karakter Gaib
 function cleanKey(key) {
     if (!key) return "";
-    // Menghapus semua karakter non-standar (seperti kode 8206) dan spasi berlebih
     return key.replace(/[^\x20-\x7E]/g, '').trim();
 }
 
@@ -59,7 +58,6 @@ app.post('/api/generate-video', upload.array('images', 2), async (req, res) => {
         let { apiKey, model, prompt, duration, resolution } = req.body;
         const files = req.files;
         
-        // Bersihkan API Key dari karakter gaib
         apiKey = cleanKey(apiKey);
 
         if (!apiKey) throw new Error("API Key kosong!");
@@ -127,10 +125,18 @@ app.post('/api/generate-video', upload.array('images', 2), async (req, res) => {
         });
 
         const genData = await genRes.json();
-
         if (!genRes.ok) throw new Error("Error dari Leonardo API: " + JSON.stringify(genData));
 
-        const jobId = genData.sdGenerationJob ? (genData.sdGenerationJob.generationId || genData.sdGenerationJob.id) : null;
+        // PENGEMBANGAN: Server sekarang bisa membaca berbagai format "laci" dari Leonardo
+        let jobId = null;
+        if (genData.generate && genData.generate.generationId) {
+            jobId = genData.generate.generationId; // <--- Ini laci yang baru!
+        } else if (genData.sdGenerationJob) {
+            jobId = genData.sdGenerationJob.generationId || genData.sdGenerationJob.id;
+        } else if (genData.generationId) {
+            jobId = genData.generationId;
+        }
+
         if (!jobId) throw new Error("Gagal mendapatkan Job ID. Data: " + JSON.stringify(genData));
 
         res.json({ success: true, model_used: model, job_id: jobId });
@@ -145,7 +151,7 @@ app.post('/api/generate-video', upload.array('images', 2), async (req, res) => {
 app.post('/api/check-status', async (req, res) => {
     try {
         let { jobId, apiKey } = req.body;
-        apiKey = cleanKey(apiKey); // Bersihkan API Key di sini juga
+        apiKey = cleanKey(apiKey);
 
         const statusRes = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${jobId}`, {
             headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
