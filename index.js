@@ -12,13 +12,18 @@ const upload = multer({ dest: 'uploads/' });
 app.post('/api/generate-video', upload.array('images', 2), async (req, res) => {
     try {
         const { apiKey, model, prompt, duration, resolution } = req.body;
+        const files = req.files;
+
         if (!apiKey) return res.status(400).json({ success: false, error: "API Key kosong!" });
+        if (!files || files.length === 0) return res.status(400).json({ success: false, error: "Minimal upload 1 gambar (Gambar Awal)!" });
 
-        // Karena upload gambar asli via API ke S3 Leonardo butuh kode yang sangat panjang, 
-        // kita menggunakan mock respon di sini agar alur UI-nya berjalan.
-        
-        console.log(`Menerima request video model ${model} dengan durasi ${duration}`);
+        // Cek apakah user upload 1 atau 2 gambar
+        const hasEndImage = files.length === 2;
 
+        console.log(`Menerima request video model: ${model}`);
+        console.log(`Durasi: ${duration} detik | Jumlah Foto: ${files.length}`);
+
+        // Respon simulasi sukses
         res.json({
             success: true,
             model_used: model,
@@ -30,28 +35,23 @@ app.post('/api/generate-video', upload.array('images', 2), async (req, res) => {
     }
 });
 
-// ENDPOINT 2: MENGECEK STATUS VIDEO (BARU)
+// ENDPOINT 2: MENGECEK STATUS VIDEO
 app.post('/api/check-status', async (req, res) => {
     try {
         const { jobId, apiKey } = req.body;
-        
-        // Simulasi Loading: Kita beri delay buatan agar seolah-olah server sedang merender video
-        // Di aplikasi asli, bagian ini akan melakukan Axios GET ke API Leonardo:
-        // https://cloud.leonardo.ai/api/rest/v1/generations/{jobId}
-
         console.log(`Mengecek status untuk Job: ${jobId}`);
 
-        // Simulasi logika agar loading berjalan beberapa kali sebelum 'Selesai'
         const randomChance = Math.random();
         
-        if (randomChance > 0.3) {
-            // 70% peluang video masih diproses
+        if (randomChance > 0.4) {
+            // 60% peluang video masih diproses (Simulasi Loading)
             res.json({ status: "PROCESSING" });
         } else {
-            // 30% peluang video selesai, dan kita kirimkan link video sampel (Big Buck Bunny)
+            // 40% peluang selesai. 
+            // LINK VIDEO SUDAH DIPERBAIKI MENGGUNAKAN HTTPS (Aman)
             res.json({ 
                 status: "COMPLETE", 
-                video_url: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" 
+                video_url: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" 
             });
         }
 
