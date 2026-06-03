@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
-const axios = require('axios');
 
 const app = express();
 app.use(cors());
@@ -9,119 +8,57 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
+// ENDPOINT 1: MENGIRIM REQUEST VIDEO
 app.post('/api/generate-video', upload.array('images', 2), async (req, res) => {
     try {
         const { apiKey, model, prompt, duration, resolution } = req.body;
-        const files = req.files;
+        if (!apiKey) return res.status(400).json({ success: false, error: "API Key kosong!" });
 
-        if (!apiKey) return res.status(400).json({ success: false, error: "API Key tidak boleh kosong!" });
-        if (!files || files.length === 0) return res.status(400).json({ success: false, error: "Minimal upload 1 gambar awal!" });
-
-        /* =============================================================================
-        CATATAN PENTING UNTUK PRODUKSI:
-        Di sistem aslinya, gambar dari `req.files` harus di-upload dulu ke endpoint 
-        https://cloud.leonardo.ai/api/rest/v1/init-image milik Leonardo untuk 
-        mendapatkan "id". 
+        // Karena upload gambar asli via API ke S3 Leonardo butuh kode yang sangat panjang, 
+        // kita menggunakan mock respon di sini agar alur UI-nya berjalan.
         
-        Karena kode untuk presigned S3 upload sangat panjang, di bawah ini saya 
-        gunakan ID statis (MOCK) agar kamu bisa melihat struktur logikanya berjalan.
-        =============================================================================
-        */
-        const startImageId = "id-gambar-awal-dummy"; 
-        const endImageId = "id-gambar-akhir-dummy";
+        console.log(`Menerima request video model ${model} dengan durasi ${duration}`);
 
-        let endpointUrl = "";
-        let payload = {};
-
-        // 1. LOGIKA UNTUK KLING 3.0 (Berdasarkan curl kamu)
-        if (model === "kling-3.0") {
-            endpointUrl = "https://cloud.leonardo.ai/api/rest/v2/generations";
-            payload = {
-                model: "kling-3.0",
-                public: false,
-                parameters: {
-                    prompt: prompt,
-                    duration: parseInt(duration),
-                    width: 1920,
-                    height: 1080,
-                    mode: resolution,
-                    motion_has_audio: true,
-                    guidances: {
-                        start_frame: [{ image: { id: startImageId, type: "GENERATED" } }]
-                    }
-                }
-            };
-        } 
-        
-        // 2. LOGIKA UNTUK SEEDANCE 2.0 (Berdasarkan curl kamu)
-        else if (model === "seedance-2.0") {
-            endpointUrl = "https://cloud.leonardo.ai/api/rest/v2/generations";
-            payload = {
-                model: "seedance-2.0",
-                public: false,
-                parameters: {
-                    prompt: prompt,
-                    duration: parseInt(duration),
-                    width: 1280,
-                    height: 720,
-                    mode: resolution,
-                    prompt_enhance: "OFF",
-                    guidances: {
-                        start_frame: [{ image: { id: startImageId, type: "UPLOADED" } }],
-                        end_frame: [{ image: { id: endImageId, type: "GENERATED" } }]
-                    }
-                }
-            };
-        }
-
-        // 3. LOGIKA UNTUK VEO 3.1 (Berdasarkan curl kamu)
-        else if (model === "VEO3_1") {
-            endpointUrl = "https://cloud.leonardo.ai/api/rest/v1/generations-image-to-video";
-            payload = {
-                model: "VEO3_1",
-                prompt: prompt,
-                imageId: startImageId,
-                imageType: "UPLOADED",
-                endFrameImage: { id: endImageId, type: "UPLOADED" },
-                resolution: resolution,
-                duration: parseInt(duration),
-                width: 1920,
-                height: 1080
-            };
-        }
-
-        // Tampilkan bentuk JSON di Console Railway (agar kamu bisa cek)
-        console.log(`Mengirim Request ke ${endpointUrl} dengan payload:`, JSON.stringify(payload, null, 2));
-
-        /*
-        // UNTUK MENJALANKAN API ASLINYA, HAPUS KOMENTAR DI BAWAH INI:
-        
-        const apiResponse = await axios.post(endpointUrl, payload, {
-            headers: {
-                'accept': 'application/json',
-                'content-type': 'application/json',
-                'authorization': `Bearer ${apiKey}`
-            }
-        });
-        
-        return res.json({ success: true, model_used: model, job_id: apiResponse.data.sdGenerationJob.generationId });
-        */
-
-        // Respon simulasi (Mock) sebelum integrasi upload gambar selesai
         res.json({
             success: true,
-            message: "Payload berhasil dibentuk. Cek console log di Railway!",
             model_used: model,
-            job_id: "test-job-id-12345"
+            job_id: "job-simulasi-" + Math.floor(Math.random() * 1000)
         });
 
     } catch (error) {
-        console.error("Terjadi error:", error.response ? error.response.data : error.message);
-        res.status(500).json({ success: false, error: "Terjadi kesalahan backend. Cek log server." });
+        res.status(500).json({ success: false, error: "Terjadi kesalahan backend." });
+    }
+});
+
+// ENDPOINT 2: MENGECEK STATUS VIDEO (BARU)
+app.post('/api/check-status', async (req, res) => {
+    try {
+        const { jobId, apiKey } = req.body;
+        
+        // Simulasi Loading: Kita beri delay buatan agar seolah-olah server sedang merender video
+        // Di aplikasi asli, bagian ini akan melakukan Axios GET ke API Leonardo:
+        // https://cloud.leonardo.ai/api/rest/v1/generations/{jobId}
+
+        console.log(`Mengecek status untuk Job: ${jobId}`);
+
+        // Simulasi logika agar loading berjalan beberapa kali sebelum 'Selesai'
+        const randomChance = Math.random();
+        
+        if (randomChance > 0.3) {
+            // 70% peluang video masih diproses
+            res.json({ status: "PROCESSING" });
+        } else {
+            // 30% peluang video selesai, dan kita kirimkan link video sampel (Big Buck Bunny)
+            res.json({ 
+                status: "COMPLETE", 
+                video_url: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" 
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({ success: false, error: "Gagal cek status." });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server API Video berjalan di port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server API Video berjalan di port ${PORT}`));
